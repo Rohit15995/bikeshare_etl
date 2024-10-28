@@ -1,0 +1,43 @@
+
+
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  env_file:
+    - airflow.env
+  volumes:
+    - ./scripts:/opt/airflow/scripts
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+  depends_on:
+    - postgres
+  networks:
+    - airflow-spark-network
+
+services:
+  postgres:
+    image: postgres:14.0
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    networks:
+      - airflow-spark-network
+  scheduler:
+    <<: *airflow-common
+    command: bash -c "airflow db migrate && airflow users create --username admin --firstname admin --lastname admin --role Admin --email admin@admin.com --password admin  && airflow scheduler"
+
+  webserver:
+    <<: *airflow-common
+    command: bash -c "airflow webserver"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - scheduler
+    restart: on-failure
+
+
+networks:
+  airflow-spark-network:
+
